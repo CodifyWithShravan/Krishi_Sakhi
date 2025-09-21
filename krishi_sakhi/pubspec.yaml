@@ -1,0 +1,44 @@
+name: krishi_sakhi
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.6 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.10.1
+  speech_to_text: ^7.3.0
+  permission_handler: ^12.0.1
+  http: ^1.2.1
+  flutter_tts: ^4.0.2
+  url_launcher: ^6.3.2
+  google_fonts: ^6.2.1
+  image_picker: ^1.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: "^0.13.1"
+
+# This block MUST start with ZERO spaces.
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/your_logo.png"
+
+# This block MUST also start with ZERO spaces.
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/your_logo.png
+    - assets/login_bg.jpg # Add this line
+
+  # Make sure you have created this folder and added your logo file.
+  # To use the logo in your app (like on the login screen), you need to uncomment this section.
+  # assets:
+  #   - assets/your_logo.png
