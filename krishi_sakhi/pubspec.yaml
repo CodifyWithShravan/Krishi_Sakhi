@@ -18,6 +18,11 @@ dependencies:
   url_launcher: ^6.3.2
   google_fonts: ^6.2.1
   image_picker: ^1.1.2
+  intl: ^0.20.2
+  flutter_native_splash: ^2.4.6
+  flutter_chat_bubble: ^2.0.2
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:
@@ -42,3 +47,15 @@ flutter:
   # To use the logo in your app (like on the login screen), you need to uncomment this section.
   # assets:
   #   - assets/your_logo.png
+  # Add this entire block to the end of your pubspec.yaml file
+flutter_native_splash:
+  color: "#FFFFFF" # The background color of your splash screen (white)
+  image: assets/your_logo.png
+
+  # For Android 12+
+  color_dark: "#121212" # Optional: a dark mode color
+  image_dark: assets/your_logo.png # Optional: a logo for dark mode
+
+  android: true
+  ios: true
+  web: false

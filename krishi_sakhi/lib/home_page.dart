@@ -6,6 +6,7 @@ import 'package:krishi_sakhi/secrets.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:krishi_sakhi/app_drawer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,7 +16,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // State variables for Supabase, Voice Assistant, and Dashboard
+  // State variables for all features
   final _supabase = Supabase.instance.client;
   final SpeechToText _speechToText = SpeechToText();
   final FlutterTts _flutterTts = FlutterTts();
@@ -32,11 +33,10 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _initSpeech();
     _initTts();
-    _loadDashboardData(); // This will fetch all our data
+    _loadDashboardData();
   }
 
-  // --- Dashboard Data Loading Functions ---
-
+  // --- Dashboard Data Loading ---
   Future<void> _loadDashboardData() async {
     await _getWeatherSnippet();
     await _getLatestNews();
@@ -48,26 +48,21 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // In lib/home_page.dart, find and replace this function
-
-Future<void> _getUserName() async {
-  try {
-    final userId = _supabase.auth.currentUser!.id;
-    // Now we select the 'username' column
-    final data = await _supabase.from('profiles').select('username').eq('id', userId).single();
-    final username = data['username'];
-    
-    if (username != null && username.isNotEmpty) {
-      if (mounted) setState(() => _userName = username);
-    } else {
-      // Fallback to email if username is not set
+  Future<void> _getUserName() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final data = await _supabase.from('profiles').select('username').eq('id', userId).single();
+      final username = data['username'];
+      if (username != null && username.isNotEmpty) {
+        if (mounted) setState(() => _userName = username);
+      } else {
+        if (mounted) setState(() => _userName = _supabase.auth.currentUser?.email ?? 'Farmer');
+      }
+    } catch (e) {
       if (mounted) setState(() => _userName = _supabase.auth.currentUser?.email ?? 'Farmer');
     }
-  } catch (e) {
-    // Fallback to email if profile doesn't exist or an error occurs
-    if (mounted) setState(() => _userName = _supabase.auth.currentUser?.email ?? 'Farmer');
   }
-}
+
   Future<void> _getWeatherSnippet() async {
     const lat = 9.9312; // Kochi
     const lon = 76.2673;
@@ -90,12 +85,11 @@ Future<void> _getUserName() async {
       final data = await _supabase.from('news_schemes').select().order('created_at', ascending: false).limit(1).single();
       if (mounted) setState(() => _latestNews = data);
     } catch (e) {
-      // Silently handle error or no news found
+      // Silently handle if no news is found
     }
   }
 
-  // --- Voice Assistant Functions ---
-
+  // --- Voice Assistant Core Functions ---
   void _initTts() async {
     await _flutterTts.setLanguage("ml-IN");
     await _flutterTts.setSpeechRate(0.5);
@@ -112,10 +106,7 @@ Future<void> _getUserName() async {
   }
 
   void _startListening() async {
-    setState(() {
-      _lastWords = '';
-      _intent = '';
-    });
+    setState(() { _lastWords = ''; _intent = ''; });
     await _speechToText.listen(
       onResult: (result) => setState(() => _lastWords = result.recognizedWords),
       localeId: 'ml_IN',
@@ -144,54 +135,70 @@ Future<void> _getUserName() async {
         _actOnIntent(intentName);
       }
     } catch (e) {
-      // Handle error
+      if(mounted) _speak('Sorry, I had trouble connecting to the AI.');
     }
   }
 
-// In lib/home_page.dart, find and replace this function
-
-Future<void> _actOnIntent(String intent) async {
+  Future<void> _actOnIntent(String intent) async {
   String responseText = '';
-  final supabase = Supabase.instance.client;
+
+  // --- NEW: Helper function to translate weather terms ---
+  String translateWeatherToMalayalam(String englishDescription) {
+    switch (englishDescription.toLowerCase()) {
+      case 'clear sky':
+        return 'തെളിഞ്ഞ ആകാശം';
+      case 'few clouds':
+        return 'ചെറിയ മേഘങ്ങൾ';
+      case 'scattered clouds':
+        return 'ഇടക്കിടെ മേഘങ്ങൾ';
+      case 'broken clouds':
+        return 'തങ്ങിനിൽക്കുന്ന മേഘങ്ങൾ';
+      case 'overcast clouds':
+        return 'മേഘാവൃതമായ';
+      case 'shower rain':
+      case 'rain':
+      case 'light rain':
+        return 'മഴ';
+      case 'thunderstorm':
+        return 'ഇടിമിന്നൽ';
+      case 'snow':
+        return 'മഞ്ഞ്';
+      case 'mist':
+        return 'മൂടൽമഞ്ഞ്';
+      default:
+        return englishDescription; // Fallback to English if not found
+    }
+  }
 
   switch (intent) {
     case 'get_weather':
-      // The assistant's "brain" for weather advice
       String advice = '';
       try {
-        // First, get the user's profile to know their crop
-        final userId = supabase.auth.currentUser!.id;
-        final profileData = await supabase.from('profiles').select('crop_type').eq('id', userId).single();
-        final userCrop = profileData['crop_type'] as String?;
-
-        // Then, get the live weather
-        const lat = 9.9312; // Kochi
+        const lat = 9.9312;
         const lon = 76.2673;
-        final weatherUri = Uri.parse('https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&appid=$openWeatherApiKey&units=metric&lang=ml');
+        final weatherUri = Uri.parse('https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&appid=$openWeatherApiKey&units=metric'); // Removed lang=ml
         final weatherResponse = await http.get(weatherUri);
 
         if (weatherResponse.statusCode == 200) {
           final weatherData = jsonDecode(weatherResponse.body);
           final mainWeather = weatherData['weather'][0]['main'].toString().toLowerCase();
+          final englishDescription = weatherData['weather'][0]['description'];
           final temperature = weatherData['main']['temp'];
 
-          // Construct the basic weather report
-          responseText = 'ഇപ്പോഴത്തെ താപനില $temperature ഡിഗ്രി സെൽഷ്യസ് ആണ്.';
+          // --- MODIFIED: Use the translator and build a pure Malayalam sentence ---
+          final malayalamDescription = translateWeatherToMalayalam(englishDescription);
+          final temperatureInMalayalam = temperature.round().toString(); // Use the number as a word
 
-          // --- ADVISORY LOGIC STARTS HERE ---
-          if (mainWeather.contains('rain')) {
-            advice = ' മഴ പ്രതീക്ഷിക്കുന്നതിനാൽ, വളപ്രയോഗം, കീടനാശിനി തളിക്കൽ എന്നിവ ഒഴിവാക്കുന്നതാണ് നല്ലത്.';
-          } else if (mainWeather.contains('clear') && temperature > 30) {
-            advice = ' നല്ല വെയിലുള്ള ദിവസമാണ്. വിളകൾക്ക് ആവശ്യത്തിന് ജലസേചനം ഉറപ്പാക്കുക.';
-            if (userCrop != null && userCrop.toLowerCase() == 'rice') {
-              advice += ' നെൽപ്പാടങ്ങളിൽ വെള്ളം നിലനിർത്താൻ പ്രത്യേകം ശ്രദ്ധിക്കുക.';
-            }
-          } else if (mainWeather.contains('wind')) {
-            advice = ' ശക്തമായ കാറ്റിന് സാധ്യതയുണ്ട്. മരുന്ന് തളിക്കുന്നത് ഒഴിവാക്കുക.';
+          responseText = 'ഇപ്പോഴത്തെ കാലാവസ്ഥ $malayalamDescription ആണ്. താപനില $temperatureInMalayalam ഡിഗ്രി സെൽഷ്യസ് ആണ്.';
+
+          if (mainWeather.contains('rain') || mainWeather.contains('thunderstorm')) {
+            advice = ' കനത്ത മഴയ്ക്ക് സാധ്യതയുണ്ട്. വെള്ളപ്പൊക്കം ഒഴിവാക്കാൻ നിങ്ങളുടെ വയലിലെ дренаж സംവിധാനങ്ങൾ പരിശോധിക്കുക. വളപ്രയോഗം ഒഴിവാക്കുക.';
+          } else if (mainWeather.contains('clear') && temperature > 32) {
+            advice = ' കടുത്ത ചൂടും വരണ്ട കാലാവസ്ഥയുമാണ്. വരൾച്ചയെ നേരിടാൻ ജലസേചനം നടത്തുക. ബാഷ്പീകരണം കുറയ്ക്കാൻ പുതയിടുന്നത് നല്ലതാണ്.';
           } else {
             advice = ' കൃഷിപ്പണിക്ക് അനുയോജ്യമായ കാലാവസ്ഥയാണ്.';
           }
-          responseText += advice; // Add the advice to the report
+          responseText += advice;
         } else {
           responseText = 'ക്ഷമിക്കണം, എനിക്ക് കാലാവസ്ഥ ലഭിച്ചില്ല.';
         }
@@ -201,10 +208,9 @@ Future<void> _actOnIntent(String intent) async {
       break;
 
     case 'log_activity':
-      // ... (This case remains the same)
       try {
-        final userId = supabase.auth.currentUser!.id;
-        await supabase.from('activities').insert({'activity_description': _lastWords, 'user_id': userId});
+        final userId = _supabase.auth.currentUser!.id;
+        await _supabase.from('activities').insert({'activity_description': _lastWords, 'user_id': userId});
         responseText = 'നിങ്ങളുടെ പ്രവർത്തനം വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു.';
       } catch (error) {
         responseText = 'ക്ഷമിക്കണം, നിങ്ങളുടെ പ്രവർത്തനം രേഖപ്പെടുത്തുന്നതിൽ ഒരു പിശകുണ്ടായി.';
@@ -215,31 +221,17 @@ Future<void> _actOnIntent(String intent) async {
       responseText = 'ക്ഷമിക്കണം, എനിക്ക് മനസ്സിലായില്ല. ദയവായി ഒന്നുകൂടി പറയുക.';
       break;
   }
-  _speak(responseText); // Speak the final combined response
+  _speak(responseText);
 }
 
-  // --- Build Method for the UI ---
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Krishi Sakhi Dashboard'),
-        actions: [
-          // NEW BUTTON STARTS HERE
-    IconButton(
-      onPressed: () {
-        Navigator.of(context).pushNamed('/pest_id');
-      },
-      icon: const Icon(Icons.bug_report_outlined),
-      tooltip: 'Pest & Disease ID',
-    ),
-    // NEW BUTTON ENDS HERE
-          IconButton(onPressed: () => Navigator.of(context).pushNamed('/calendar'), icon: const Icon(Icons.calendar_today), tooltip: 'Crop Calendar'),
-          IconButton(onPressed: () => Navigator.of(context).pushNamed('/news'), icon: const Icon(Icons.article), tooltip: 'News & Schemes'),
-          IconButton(onPressed: () => Navigator.of(context).pushNamed('/profile'), icon: const Icon(Icons.person), tooltip: 'Profile'),
-          IconButton(onPressed: () async { await _supabase.auth.signOut(); if (context.mounted) Navigator.of(context).pushReplacementNamed('/login'); }, icon: const Icon(Icons.logout), tooltip: 'Logout'),
-        ],
       ),
+      drawer: const AppDrawer(),
       body: _isLoadingDashboard
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -294,5 +286,4 @@ Future<void> _actOnIntent(String intent) async {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
-  
 }

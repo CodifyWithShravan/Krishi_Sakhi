@@ -8,6 +8,11 @@ import 'package:krishi_sakhi/news_page.dart';
 import 'package:krishi_sakhi/calendar_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:krishi_sakhi/pest_id_page.dart';
+import 'package:krishi_sakhi/activity_log_page.dart';
+import 'package:krishi_sakhi/market_price_page.dart';
+import 'package:krishi_sakhi/chat_advisor_page.dart';
+import 'package:krishi_sakhi/sustainability_page.dart';
+import 'package:krishi_sakhi/management_dashboard_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,6 +93,11 @@ class MyApp extends StatelessWidget {
         '/news': (_) => const NewsPage(),
         '/calendar': (_) => const CalendarPage(),
            '/pest_id': (_) => const PestIdPage(),
+            '/activity_log': (_) => const ActivityLogPage(),
+            '/market_prices': (_) => const MarketPricePage(),
+               '/chat_advisor': (_) => const ChatAdvisorPage(),
+                   '/sustainability': (_) => const SustainabilityPage(),
+                       '/management': (_) => const ManagementDashboardPage(),
       },
     );
   }
